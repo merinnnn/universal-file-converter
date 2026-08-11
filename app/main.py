@@ -26,7 +26,7 @@ async def start_background_sweeper():
     asyncio.create_task(jobs.sweep_expired_jobs_forever())
 
 @app.get("/api/formats")
-def list_targets(from_ext: str)
+def list_targets(from_ext: str):
     targets = registry.available_targets(from_ext.lower().lstrip("."))
     return {
         "from": from_ext.lower(),
