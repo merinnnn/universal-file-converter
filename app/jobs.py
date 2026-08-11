@@ -10,7 +10,7 @@ JOBS_ROOT = Path("/tmp/fileconverter_jobs")
 JOB_TTL_SECONDS = 15 * 60   # delete anything older
 SWEEP_INTERVAL_SECONDS = 60
 
-JOBS_ROOT.mkdir(parent=True, exist_ok=True)
+JOBS_ROOT.mkdir(parents=True, exist_ok=True)
 
 @dataclass
 class Job:

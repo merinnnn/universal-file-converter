@@ -33,7 +33,7 @@ def list_targets(from_ext: str):
         "targets": targets
         }
 
-@app.post("/api/converter")
+@app.post("/api/convert")
 async def converter(background_tasks: BackgroundTasks, file: UploadFile = File(...), to: str = ""):
     if not to:
         raise HTTPException(400, "missing target format ?to=...")
@@ -61,7 +61,7 @@ async def converter(background_tasks: BackgroundTasks, file: UploadFile = File(.
         while chunk := await file.read (1024*1024):
             size += len(chunk)
             if size > MAX_UPLOAD_BYTES:
-                jobs.delete_jpb(job.id)
+                jobs.delete_job(job.id)
                 raise HTTPException(413, "file too large")
             f.write(chunk)
 
@@ -83,7 +83,7 @@ async def _run_conversion(job_id: str, converter_chain, input_path: Path, to_ext
             is_last = i == len(converter_chain) - 1
             out_name = f"output.{to_ext}" if is_last else f"intermediate_{i}.{converter.to_ext}"
             out_path = job.dir / out_name
-            await converter.converter(current_input, out_path)
+            await converter.convert(current_input, out_path)
             if current_input != input_path:
                 # Cleanup
                 current_input.unlink(missing_ok=True)
@@ -114,7 +114,7 @@ def download(job_id: str, background_tasks: BackgroundTasks):
     job = jobs.get_job(job_id)
     if job is None:
         raise HTTPException(404, "job not found or already expired")
-    if job.status != "done" or job.output_path is not None or not job.output_path.exists():
+    if job.status != "done" or job.output_path is None or not job.output_path.exists():
         raise HTTPException(409, f"job is not ready (status: {job.status})")
 
     output_path = job.output_path

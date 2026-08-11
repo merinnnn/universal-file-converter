@@ -22,7 +22,7 @@ class PillowConverter(Converter):
         try:
             img = Image.open(input_path)
             target_format = _PILLOW_FORMAT[self.to_ext]
-            if target_format in ("JPEG", "BMP") and img.mode in ("RGB", "P"):
+            if target_format in ("JPEG", "BMP") and img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
             img.save(output_path, format=target_format)
         except Exception as e:
