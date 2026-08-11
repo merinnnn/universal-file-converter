@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>File Converter</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --accent: #5b8def;
+    --accent-hover: #4a7bd6;
+    --text: #e8eaed;
+    --text-dim: #9aa0ac;
+    --success: #4caf50;
+    --error: #e05a5a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  p.sub { color: var(--text-dim); margin: 0 0 24px; font-size: 0.9rem; }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(91, 141, 239, 0.08);
+  }
+  .dropzone p { margin: 8px 0 0; color: var(--text-dim); font-size: 0.9rem; }
+  .dropzone input { display: none; }
+  .filerow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding: 12px 14px;
+    background: #1e222b;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  select, button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    background: #1e222b;
+    color: var(--text);
+  }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    font-weight: 600;
+  }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status { margin-top: 16px; font-size: 0.9rem; color: var(--text-dim); min-height: 20px; }
+  .status.error { color: var(--error); }
+  .status.success { color: var(--success); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>File Converter</h1>
+    <p class="sub">Drop a file, pick a format, convert. Nothing is stored after you download.</p>
+
+    <div class="dropzone" id="dropzone">
+      <p id="dropzoneText">Drag &amp; drop a file here, or click to browse</p>
+      <input type="file" id="fileInput" />
+    </div>
+
+    <div class="filerow hidden" id="fileRow">
+      <span id="fileName"></span>
+      <select id="formatSelect"></select>
+    </div>
+
+    <button class="primary hidden" id="convertBtn">Convert</button>
+    <button class="primary hidden" id="downloadBtn">Download result</button>
+
+    <div class="status" id="statusText"></div>
+  </div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const dropzoneText = document.getElementById('dropzoneText');
+const fileInput = document.getElementById('fileInput');
+const fileRow = document.getElementById('fileRow');
+const fileNameEl = document.getElementById('fileName');
+const formatSelect = document.getElementById('formatSelect');
+const convertBtn = document.getElementById('convertBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const statusText = document.getElementById('statusText');
+
+let selectedFile = null;
+let currentJobId = null;
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+async function handleFile(file) {
+  selectedFile = file;
+  currentJobId = null;
+  fileNameEl.textContent = file.name;
+  dropzoneText.textContent = 'Drop a different file to replace';
+  fileRow.classList.remove('hidden');
+  convertBtn.classList.remove('hidden');
+  downloadBtn.classList.add('hidden');
+  statusText.textContent = '';
+  statusText.className = 'status';
+
+  const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+  formatSelect.innerHTML = '<option>Loading formats…</option>';
+  try {
+    const res = await fetch(`/api/formats?from_ext=${encodeURIComponent(ext)}`);
+    const data = await res.json();
+    if (!data.targets || data.targets.length === 0) {
+      formatSelect.innerHTML = '<option>No conversions available</option>';
+      convertBtn.disabled = true;
+    } else {
+      formatSelect.innerHTML = data.targets.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
+      convertBtn.disabled = false;
+    }
+  } catch (err) {
+    formatSelect.innerHTML = '<option>Error loading formats</option>';
+  }
+}
+
+convertBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  convertBtn.disabled = true;
+  convertBtn.textContent = 'Converting…';
+  statusText.textContent = 'Uploading and converting…';
+  statusText.className = 'status';
+  downloadBtn.classList.add('hidden');
+
+  const to = formatSelect.value;
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  try {
+    const res = await fetch(`/api/convert?to=${encodeURIComponent(to)}`, { method: 'POST', body: formData });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Conversion failed to start');
+    }
+    const data = await res.json();
+    currentJobId = data.job_id;
+    pollStatus();
+  } catch (err) {
+    statusText.textContent = err.message;
+    statusText.className = 'status error';
+    convertBtn.disabled = false;
+    convertBtn.textContent = 'Convert';
+  }
+});
+
+async function pollStatus() {
+  if (!currentJobId) return;
+  try {
+    const res = await fetch(`/api/status/${currentJobId}`);
+    const data = await res.json();
+    if (data.status === 'done') {
+      statusText.textContent = 'Done — ready to download.';
+      statusText.className = 'status success';
+      convertBtn.classList.add('hidden');
+      downloadBtn.classList.remove('hidden');
+    } else if (data.status === 'failed') {
+      statusText.textContent = 'Conversion failed: ' + (data.error || 'unknown error');
+      statusText.className = 'status error';
+      convertBtn.disabled = false;
+      convertBtn.textContent = 'Convert';
+    } else {
+      statusText.textContent = 'Converting…';
+      setTimeout(pollStatus, 1000);
+    }
+  } catch (err) {
+    statusText.textContent = 'Lost connection to server.';
+    statusText.className = 'status error';
+  }
+}
+
+downloadBtn.addEventListener('click', () => {
+  if (!currentJobId) return;
+  window.location.href = `/api/download/${currentJobId}`;
+  // File is deleted server-side right after this response streams.
+  setTimeout(() => {
+    statusText.textContent = 'Downloaded. File deleted from server.';
+    downloadBtn.classList.add('hidden');
+  }, 800);
+});
+
+// Best-effort early cleanup if the user navigates away mid-job.
+window.addEventListener('beforeunload', () => {
+  if (currentJobId) {
+    navigator.sendBeacon(`/api/job/${currentJobId}/discard`, JSON.stringify({}));
+  }
+});
+</script>
+</body>
+</html>
