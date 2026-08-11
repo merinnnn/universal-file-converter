@@ -20,6 +20,21 @@ def register(from_ext: str, to_ext: str):
         return cls
     return _decorator
 
+def available_targets(from_ext: str) -> List[str]:
+    """All formats reachable (directly or via chaining) from from_ext."""
+    from_ext = from_ext.lower()
+    reachable = set()
+    seen = {from_ext}
+    q = deque([from_ext])
+    while q:
+        cur = q.popleft()
+        for (f, t) in _REGISTRY.keys():
+            if f == cur and t not in seen:
+                seen.add(t)
+                reachable.add(t)
+                q.append(t)
+    return sorted(reachable)
+
 def get_direct(from_ext: str, to_ext: str) -> Converter | None:
     return _REGISTRY.get((from_ext.lower(), to_ext.lower()))
 
