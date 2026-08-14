@@ -1,18 +1,34 @@
 import asyncio
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from app import jobs
+from app import validation
 from app.converters import registry
 import app.converters  # noqa: F401 - triggers registration of all converters
 
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024  # 500 MB
 
+def get_client_ip(request: Request):
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=get_client_ip, default_limits=["60/minute"])
+
 app = FastAPI(title="Universal File Converter")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,7 +50,13 @@ def list_targets(from_ext: str):
         }
 
 @app.post("/api/convert")
-async def converter(background_tasks: BackgroundTasks, file: UploadFile = File(...), to: str = ""):
+@limiter.limit("10/minute")
+async def converter(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    to: str = "",
+):
     if not to:
         raise HTTPException(400, "missing target format ?to=...")
 
@@ -57,13 +79,31 @@ async def converter(background_tasks: BackgroundTasks, file: UploadFile = File(.
     input_path = job.dir / f"input.{from_ext}"
 
     size = 0
+    header = b""
+    validated = False
     with open(input_path, "wb") as f:
-        while chunk := await file.read (1024*1024):
+        while chunk := await file.read(1024 * 1024):
             size += len(chunk)
             if size > MAX_UPLOAD_BYTES:
                 jobs.delete_job(job.id)
                 raise HTTPException(413, "file too large")
             f.write(chunk)
+
+            # Validate against magic bytes as soon as we have enough of the file to do so
+            if not validated:
+                header += chunk
+                if len(header) >= validation.SNIFF_BYTES_NEEDED:
+                    if not validation.sniff_matches(from_ext, header):
+                        jobs.delete_job(job.id)
+                        raise HTTPException(
+                            400,
+                            f"file content does not match its '.{from_ext}' extension",
+                        )
+                    validated = True
+
+    if not validated and not validation.sniff_matches(from_ext, header):
+        jobs.delete_job(job.id)
+        raise HTTPException(400, f"file content does not match its '.{from_ext}' extension")
 
     job.status = "processing"
     background_tasks.add_task(_run_conversion, job.id, path, input_path, to_ext)
