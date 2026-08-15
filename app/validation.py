@@ -16,6 +16,8 @@ def _is_mp3(data: bytes) -> bool:
 
 CHECKS: Dict[str, Callable[[bytes], bool]] = {
     "png": lambda d: d[:8] == b"\x89PNG\r\n\x1a\n",
+    "apng": lambda d: d[:8] == b"\x89PNG\r\n\x1a\n",
+    "gif": lambda d: d[:6] in (b"GIF87a", b"GIF89a"),
     "jpg": lambda d: d[:3] == b"\xff\xd8\xff",
     "jpeg": lambda d: d[:3] == b"\xff\xd8\xff",
     "jfif": lambda d: d[:3] == b"\xff\xd8\xff",

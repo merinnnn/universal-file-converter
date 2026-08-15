@@ -28,13 +28,14 @@ class FfmpegConverter(Converter):
 
 _AUDIO_VIDEO_PAIRS = [
     ("mp4", "mp3"), ("mp4", "wav"), ("mp4", "webm"), ("mp4", "gif"),
-    ("mov", "mp4"), ("mov", "mp3"),
-    ("avi", "mp4"), ("avi", "mp3"),
-    ("mkv", "mp4"), ("mkv", "mp3"),
-    ("webm", "mp4"), ("webm", "mp3"),
+    ("mov", "mp4"), ("mov", "mp3"), ("mov", "gif"),
+    ("avi", "mp4"), ("avi", "mp3"), ("avi", "gif"),
+    ("mkv", "mp4"), ("mkv", "mp3"), ("mkv", "gif"),
+    ("webm", "mp4"), ("webm", "mp3"), ("webm", "gif"),
     ("wav", "mp3"), ("mp3", "wav"),
     ("flac", "mp3"), ("m4a", "mp3"),
 ]
+
 
 for _from, _to in _AUDIO_VIDEO_PAIRS:
     register(_from, _to)(FfmpegConverter)
