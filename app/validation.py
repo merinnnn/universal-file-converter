@@ -18,6 +18,7 @@ CHECKS: Dict[str, Callable[[bytes], bool]] = {
     "png": lambda d: d[:8] == b"\x89PNG\r\n\x1a\n",
     "jpg": lambda d: d[:3] == b"\xff\xd8\xff",
     "jpeg": lambda d: d[:3] == b"\xff\xd8\xff",
+    "jfif": lambda d: d[:3] == b"\xff\xd8\xff",
     "webp": lambda d: _has_riff_subtype(d, b"WEBP"),
     "bmp": lambda d: d[:2] == b"BM",
     "tiff": lambda d: d[:4] in (b"II*\x00", b"MM\x00*"),

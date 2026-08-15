@@ -7,7 +7,7 @@ from .base import Converter, ConversionError
 from .registry import register
 
 _PILLOW_FORMAT = {
-    "jpg": "JPEG", "jpeg": "JPEG", "png": "PNG",
+    "jpg": "JPEG", "jpeg": "JPEG", "jfif": "JPEG", "png": "PNG",
     "webp": "WEBP", "bmp": "BMP", "tiff": "TIFF", "ico": "ICO",
 }
 
@@ -35,6 +35,8 @@ _RASTER_PAIRS = [
     ("png", "bmp"), ("bmp", "png"),
     ("png", "ico"), ("jpg", "ico"),
     ("tiff", "png"), ("png", "tiff"),
+    ("jfif", "png"), ("jfif", "jpg"), ("jfif", "webp"),
+    ("png", "jfif"), ("jpg", "jfif"),
 ]
 
 for _from, _to in _RASTER_PAIRS:
