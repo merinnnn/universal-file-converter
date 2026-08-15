@@ -5,12 +5,15 @@ services:
     expose:
       - "8000"
     tmpfs:
+      # Job files live in RAM only, never touch disk, and vanish on container restart 
+      # as an extra guarantee on top of the app's own TTL-based cleanup.
       - /tmp/fileconverter_jobs:size=1g
     deploy:
       resources:
         limits:
           cpus: "2.0"
-          memory: 2g
+          # LibreOffice is memory-hungry
+          memory: 3g
 
   nginx:
     image: nginx:alpine
