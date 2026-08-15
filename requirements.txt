@@ -3,3 +3,4 @@ uvicorn[standard]==0.30.6
 python-multipart==0.0.9
 Pillow==10.4.0
 slowapi==0.1.10
+pillow-heif==1.5.0
