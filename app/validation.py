@@ -34,8 +34,12 @@ CHECKS: Dict[str, Callable[[bytes], bool]] = {
     "wav": lambda d: _has_riff_subtype(d, b"WAVE"),
     "mp3": _is_mp3,
     "flac": lambda d: d[:4] == b"fLaC",
+    "zip": lambda d: d[:4] in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"),
+    "7z": lambda d: d[:6] == b"\x37\x7a\xbc\xaf\x27\x1c",
+    "tgz": lambda d: d[:2] == b"\x1f\x8b",
 }
 
+# How many leading bytes we need to make a confident decision.
 SNIFF_BYTES_NEEDED = 16
 
 def sniff_matches(claimed_ext: str, header:  bytes) -> bool:

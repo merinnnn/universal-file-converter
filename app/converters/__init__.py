@@ -4,3 +4,6 @@ from . import documents    # noqa: F401 LibreOffice/Poppler/Pandoc: docx, pdf, e
 from . import heic         # noqa: F401 HEIC/HEIF (iPhone photos)
 from . import vector       # noqa: F401 png/jpg -> svg vectorization
 from . import animated     # noqa: F401 gif/apng <-> video/image
+
+# TODO: NEEDS FURTHER TESTING
+# from . import archives     # noqa: F401 zip/tar/tgz/7z

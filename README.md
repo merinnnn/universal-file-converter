@@ -19,6 +19,7 @@ Self-hosted, extensible file conversion service. Drag-and-drop UI, plugin-based 
   - video<-->gif via ffmpeg
   - image<-->gif via Pillow (static image --> single-frame gif, gif --> first frame as png/jpg)
   - apng<-->gif via Pillow, extracting every animation frame and re-encoding into the target container
+- **Archive conversions** (zip/tar/tgz/7z): extracts every file from the source archive to a temp directory, then repacks into the target format; nested directory structure and file content both preserved.
 - Drag-and-drop frontend at `/`
 - Ephemeral job storage: files live in `/tmp/fileconverter_jobs/<uuid>/`,
   deleted immediately after download, and swept by TTL (15 min default) as a backstop
@@ -54,3 +55,4 @@ Visit http://localhost:8000
 
 - **Content validation**: `app/validation.py` checks uploaded files' actual magic bytes against their claimed extension before conversion runs a `.png` that's actually a text file or executable gets rejected with a 400, not silently handed to a converter.
 - **Rate limiting**: via `slowapi`. Global default of 60 requests/minute per IP, with a tighter 10/minute limit specifically on `/api/convert` since that's the expensive endpoint. Keyed off `X-Forwarded-For` (set by `nginx.conf`) so it tracks real client IPs, not nginx's own container IP.
+- **Archive conversion**: 7z uses `py7zr` (pure Python, no extra system package needed).Hardened against zip-slip path traversal (tested directly against all three formats) and decompression bombs: a 2GB uncompressed-size cap and 10,000-file cap are checked against each archive's own declared metadata before extraction even starts, with zip/tar also enforcing the cap at actual-bytes-written time as a second line of defense.
