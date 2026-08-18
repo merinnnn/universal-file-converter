@@ -37,12 +37,22 @@ CHECKS: Dict[str, Callable[[bytes], bool]] = {
     "zip": lambda d: d[:4] in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"),
     "7z": lambda d: d[:6] == b"\x37\x7a\xbc\xaf\x27\x1c",
     "tgz": lambda d: d[:2] == b"\x1f\x8b",
+    "svg": lambda d: b"<svg" in d[:200] or b"<?xml" in d[:20],
+    "woff": lambda d: d[:4] == b"wOFF",
+    "woff2": lambda d: d[:4] == b"wOF2",
+    "xlsx": lambda d: d[:4] in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"),
+    "ods": lambda d: d[:4] in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"),
+    "ttf": lambda d: d[:4] in (b"\x00\x01\x00\x00", b"true", b"ttcf"),
+    "otf": lambda d: d[:4] == b"OTTO",
 }
 
 # How many leading bytes we need to make a confident decision.
 SNIFF_BYTES_NEEDED = 16
 
+# TODO: needs to strenghten verification (not permissive)
 def sniff_matches(claimed_ext: str, header:  bytes) -> bool:
+    """Return True if `header` (the first ~16 bytes of the upload) is consistent with 
+    claimed_ext. Permissive (returns True) for extensions with no registered signature."""
     check = CHECKS.get(claimed_ext.lower())
     if check is None:
         return True
